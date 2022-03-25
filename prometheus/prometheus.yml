@@ -1,0 +1,93 @@
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9090"]
+      
+  - job_name: 'snmp_synology'
+    static_configs:
+      - targets:
+        - "192.168.101.113"
+    metrics_path: "/snmp"
+    params:
+      module: [synology]
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.104.33:9116  # The SNMP exporter's real hostname:port.
+        
+  - job_name: 'pihole'
+    static_configs:
+      - targets: ['192.168.104.34:9617']
+  
+  - job_name: 'unifipoller'
+    scrape_interval: 30s
+    static_configs:
+    - targets: ['192.168.104.36:9130']
+    
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - 8.8.8.8
+        - opendns.com
+        - 24.210.112.1
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.104.37:9115  # The blackbox exporter's real hostname:port.
+    
+  - job_name: 'bb_my_networks'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    file_sd_configs:
+    - files:
+      - "/etc/prometheus/file_sd/my_networks.yml"
+      - "/etc/prometheus/file_sd/wired_net.yml"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.104.37:9115  # The blackbox exporter's real hostname:port.
+        
+  - job_name: "ispmonitor"
+    scrape_interval: 60s
+    static_configs:
+      - targets: ["192.168.101.200:9273"]
